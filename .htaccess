@@ -153,4 +153,5 @@ RewriteRule ^ server.php
         # DEFLATE by extension
         AddOutputFilter DEFLATE js css htm html xml
     </IfModule>
+
 </IfModule>
