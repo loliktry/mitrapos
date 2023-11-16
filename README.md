@@ -1,2 +1,0 @@
-# mitrapos
-Web based POS
