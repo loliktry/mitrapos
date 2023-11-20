@@ -13,8 +13,8 @@ use DateTimeZone;
 use Lcobucci\Clock\SystemClock;
 use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Signer\Key\InMemory;
-use Lcobucci\JWT\Signer\Key\LocalFileReference;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
+use Lcobucci\JWT\Validation\Constraint\LooseValidAt;
 use Lcobucci\JWT\Validation\Constraint\SignedWith;
 use Lcobucci\JWT\Validation\Constraint\ValidAt;
 use Lcobucci\JWT\Validation\RequiredConstraintsViolated;
@@ -44,11 +44,18 @@ class BearerTokenValidator implements AuthorizationValidatorInterface
     private $jwtConfiguration;
 
     /**
-     * @param AccessTokenRepositoryInterface $accessTokenRepository
+     * @var \DateInterval|null
      */
-    public function __construct(AccessTokenRepositoryInterface $accessTokenRepository)
+    private $jwtValidAtDateLeeway;
+
+    /**
+     * @param AccessTokenRepositoryInterface $accessTokenRepository
+     * @param \DateInterval|null             $jwtValidAtDateLeeway
+     */
+    public function __construct(AccessTokenRepositoryInterface $accessTokenRepository, \DateInterval $jwtValidAtDateLeeway = null)
     {
         $this->accessTokenRepository = $accessTokenRepository;
+        $this->jwtValidAtDateLeeway = $jwtValidAtDateLeeway;
     }
 
     /**
@@ -70,12 +77,18 @@ class BearerTokenValidator implements AuthorizationValidatorInterface
     {
         $this->jwtConfiguration = Configuration::forSymmetricSigner(
             new Sha256(),
-            InMemory::plainText('')
+            InMemory::plainText('empty', 'empty')
         );
 
+        $clock = new SystemClock(new DateTimeZone(\date_default_timezone_get()));
         $this->jwtConfiguration->setValidationConstraints(
-            new ValidAt(new SystemClock(new DateTimeZone(\date_default_timezone_get()))),
-            new SignedWith(new Sha256(), LocalFileReference::file($this->publicKey->getKeyPath()))
+            \class_exists(LooseValidAt::class)
+                ? new LooseValidAt($clock, $this->jwtValidAtDateLeeway)
+                : new ValidAt($clock, $this->jwtValidAtDateLeeway),
+            new SignedWith(
+                new Sha256(),
+                InMemory::plainText($this->publicKey->getKeyContents(), $this->publicKey->getPassPhrase() ?? '')
+            )
         );
     }
 
@@ -89,7 +102,7 @@ class BearerTokenValidator implements AuthorizationValidatorInterface
         }
 
         $header = $request->getHeader('authorization');
-        $jwt = \trim((string) \preg_replace('/^(?:\s+)?Bearer\s/', '', $header[0]));
+        $jwt = \trim((string) \preg_replace('/^\s*Bearer\s/', '', $header[0]));
 
         try {
             // Attempt to parse the JWT
