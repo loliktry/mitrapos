@@ -262,7 +262,7 @@
                   </tr>
 
                   <tr>
-                    <td>{{$t('Brand')}}</td>
+                    <td>{{$t('Brand')}} </td>
                     <th>
                       <span class="badge badge-outline-info">{{$t('Field_optional')}}</span>
                     </th>

@@ -107,6 +107,9 @@ Route::group(['middleware' => ['auth', 'Is_Active']], function () {
         }
     });
 
+    
+    
+
 
     Route::get('/{vue?}',
         function () {
@@ -139,4 +142,5 @@ Route::post('/update/lastStep', [
     'as' => 'update_lastStep', 'uses' => 'UpdateController@lastStep',
 ]);
 
+Route::get('dataku',  'AkuController@dataku');
 
